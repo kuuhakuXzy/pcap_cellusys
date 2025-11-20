@@ -20,7 +20,10 @@ services:
     # network_mode: "host"
 
   backend:
-    build: .
+    # image: hnguyenxzy/pcap-catalog-service:2.0.0
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: backend
     restart: unless-stopped
     depends_on:
@@ -29,7 +32,7 @@ services:
     ports:
       - "${BE_BASE_PORT}:${BE_INTERNAL_PORT}"
     volumes:
-      - "./pcaps:${PCAP_MOUNTED_DIRECTORY}"
+      - "./backend/pcaps:${PCAP_MOUNTED_DIRECTORY}"
     env_file:
       - .env
     networks:
@@ -41,7 +44,10 @@ services:
       retries: 5
 
   frontend:
-    build: ./frontend
+    # image: datrung/pcap-frontend-app:1.0.4
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: frontend
     restart: unless-stopped
     depends_on:

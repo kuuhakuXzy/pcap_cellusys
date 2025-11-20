@@ -1,0 +1,70 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+wheelhouse/
+
+# Virtual environments
+.env
+.venv/
+venv/
+env/
+ENV/
+venv.bak/
+
+# Tooling / caches
+.pytest_cache/
+.tox/
+.nox/
+.cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Test / docs (optional to keep context small)
+tests/
+docs/
+examples/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local config / secrets
+.env*
+secrets/
+credentials/
+*.pem
+*.key
+
+# Logs / databases / runtime
+*.log
+*.sqlite3
+*.db
+*.pid
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*~
+*.sublime-*
+
+# Git / OS files
+.git
+.gitignore
+.DS_Store
+Thumbs.db
+
+# Docker / compose files (if you don't want them in build context)
+Dockerfile
+docker-compose*.yml
