@@ -1,0 +1,17 @@
+# Configuration file for the application
+
+## NOTE: Environment variables can override these settings.
+## For example:
+
+# PCAP_BACKEND__BASE_URL="https://overridden.com"
+# PCAP_PCAP_MOUNTED_DIRECTORY="/mnt/pcaps"
+
+pcap_mounted_directory: "/app/pcaps"
+redis_host: "redis"
+redis_internal_port: 6379
+
+logging_level: "INFO"
+
+backend:
+  base_url: "http://localhost"
+  base_port: 8000
