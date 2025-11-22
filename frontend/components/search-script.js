@@ -8,7 +8,7 @@ import {
     TOAST_STATUS
 } from "./constant.js";
 
-const SERVER = new URL(`http://${window.APP_CONFIG.BASE_URL}:${window.APP_CONFIG.BASE_PORT}`).href;
+const SERVER = new URL(`${window.APP_CONFIG.BASE_URL}`).href;
 
 // Search function
 function displaySearchLoadingSpinner() {
