@@ -5,13 +5,14 @@ import asyncio
 
 from services.redis_service import RedisService
 from config.config_service import ConfigService
+from container import container
 
 router = APIRouter()
 
 @router.get("/pcaps/download/{file_hash}")
 async def download_pcap_by_hash(file_hash: str):
-    redis_client = RedisService.client
-    settings = ConfigService.init()
+    redis_client = container.get(RedisService).client
+    settings = container.get(ConfigService).init()
     if not redis_client:
         raise HTTPException(status_code=503, detail="Service unavailable: Redis connection failed.")
 
@@ -23,8 +24,8 @@ async def download_pcap_by_hash(file_hash: str):
     filename = file_metadata.get("filename")
 
     abs_path = await asyncio.to_thread(os.path.abspath, file_path)
-    allowed_abs_dirs = [await asyncio.to_thread(os.path.abspath, d) for d in settings.PCAP_DIRECTORIES]
-    if not any(abs_path.startswith(d) for d in allowed_abs_dirs):
+    allowed_abs_dir = await asyncio.to_thread(os.path.abspath, settings.PCAP_DIRECTORY)
+    if not abs_path.startswith(allowed_abs_dir):
         raise HTTPException(status_code=403, detail="Forbidden: Access is denied.")
 
     return FileResponse(abs_path, media_type='application/vnd.tcpdump.pcap', filename=filename)

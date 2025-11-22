@@ -6,12 +6,14 @@
 # PCAP_BACKEND__BASE_URL="https://overridden.com"
 # PCAP_PCAP_MOUNTED_DIRECTORY="/mnt/pcaps"
 
-pcap_mounted_directory: "/app/pcaps"
+pcap_directory: "/app/pcaps"
+host_pcap_directory: "/home/user/pcaps" # Path on the host machine where pcaps are stored
 redis_host: "redis"
-redis_internal_port: 6379
+redis_port: 6379
 
 logging_level: "INFO"
 
 backend:
-  base_url: "http://localhost"
-  base_port: 8000
+  public_base_url: "http://localhost:8000"
+  allowed_origins:
+    - "http://localhost:3000"

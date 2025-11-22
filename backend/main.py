@@ -5,8 +5,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from concurrent.futures import ThreadPoolExecutor
 
+# Import container and services
+from container import container
 from config.config_service import ConfigService
 from services.redis_service import RedisService
+from services.scanner_service import ScannerService
 from api import search, scan, download, health, errors
 from utils.logging import setup_logging
 
@@ -14,13 +17,18 @@ from utils.logging import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
+# Get service instances from container
+config_service = container.get(ConfigService)
+redis_service = container.get(RedisService)
+scanner_service = container.get(ScannerService)
+
 # Load config
-settings = ConfigService.init()
+settings = config_service.init()
 
 # Init Redis
 REDIS_HOST = settings.get("redis_host", "localhost")
-REDIS_PORT = settings.get("redis_internal_port", 6379)
-redis_client = RedisService.init(REDIS_HOST, int(REDIS_PORT))
+REDIS_PORT = settings.get("redis_port", 6379)
+redis_client = redis_service.init(REDIS_HOST, int(REDIS_PORT))
 
 # Create app
 app = FastAPI(title="Pcap Catalog Service")
@@ -28,7 +36,7 @@ app = FastAPI(title="Pcap Catalog Service")
 # CORS (if needed)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[origin for origin in settings.get("backend", {}).get("allowed_origins", [])],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,7 +64,7 @@ async def startup_event():
             if not keys:
                 logger.info("No indexed pcaps found. Starting initial scan in background.")
                 loop = asyncio.get_event_loop()
-                loop.run_in_executor(executor, lambda: asyncio.run(scan.ScannerService.scan(redis_client, settings.PCAP_DIRECTORIES, base_url=settings.FULL_BASE_URL)))
+                loop.run_in_executor(executor, lambda: asyncio.run(scanner_service.scan(settings.PCAP_DIRECTORY, base_url=settings.FULL_BASE_URL)))
             else:
                 logger.info(f"Found {len(keys)} indexed pcaps. Skipping initial full scan.")
         except Exception as e:

@@ -1,21 +1,23 @@
 import redis
 import logging
+from decorators import service
 
+@service
 class RedisService:
-    client = None
+    def __init__(self):
+        self.client = None
 
-    @staticmethod
-    def init(host, port):
-        if RedisService.client:
-            return RedisService.client
+    def init(self, host, port):
+        if self.client:
+            return self.client
 
         try:
             r = redis.Redis(host=host, port=port, decode_responses=True)
             r.ping()
             logging.info(f"Connected to Redis at {host}:{port}")
-            RedisService.client = r
-        except redis.exceptions.ConnectionError as e:
+            self.client = r
+        except redis.ConnectionError as e:
             logging.error(f"Redis connection failed: {e}")
-            RedisService.client = None
+            self.client = None
 
-        return RedisService.client
+        return self.client
