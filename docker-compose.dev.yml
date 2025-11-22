@@ -23,25 +23,20 @@ services:
     # image: hnguyenxzy/pcap-catalog-service:2.0.0
     build: 
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: backend
+      dockerfile: Dockerfile.dev
+    container_name: backend_dev
     restart: unless-stopped
     depends_on:
       redis:
         condition: service_healthy
     ports:
       - "8000:8000"
-    volumes:
-      - "./backend/pcaps:/app/pcaps"
     env_file:
       - .env
     networks:
       - app_network
-    healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request, sys, os; url=f'http://localhost:8000/health'; urllib.request.urlopen(url)\""]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+    # command: sh -c "uvicorn main:app --host 0.0.0.0 --port 8000"
+    command: sleep infinity
 
   frontend:
     # image: datrung/pcap-frontend-app:1.0.4
@@ -51,19 +46,13 @@ services:
     container_name: frontend
     restart: unless-stopped
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     ports:
       - "3000:80"
     env_file:
       - .env
     networks:
       - app_network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:80 >/dev/null"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
 volumes:
   redis_data:
