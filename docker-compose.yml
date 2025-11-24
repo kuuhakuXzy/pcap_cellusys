@@ -30,9 +30,9 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${BE_EXPOSE_PORT}:8000"
     volumes:
-      - "./backend/pcaps:/app/pcaps"
+      - "${PCAP_HOST_PCAP_DIRECTORY}:${PCAP_PCAP_DIRECTORY}"
     env_file:
       - .env
     networks:
@@ -54,7 +54,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "3000:80"
+      - "${FE_EXPOSE_PORT}:80"
     env_file:
       - .env
     networks:

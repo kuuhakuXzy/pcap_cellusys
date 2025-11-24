@@ -61,7 +61,7 @@ async def scheduled_scan_loop():
     """Runs in the background and triggers a scan every X seconds."""
     while True:
         try:
-            interval = int(os.getenv("SCAN_INTERVAL_SECONDS", 3600))
+            interval = settings.get("scan_interval_seconds", 3600)
             await asyncio.sleep(interval)
 
             # Import scan_status from scan module
