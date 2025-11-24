@@ -15,5 +15,4 @@ COPY . .
 
 RUN mkdir -p /app/pcaps
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${BE_INTERNAL_PORT:-8000}"]
-
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000"]
