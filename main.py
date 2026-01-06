@@ -601,6 +601,11 @@ REDISEARCH_SORTABLE_FIELDS = {
     SortField.path: "path"
 }
 
+def build_query(query: str):
+    if len(query) < 3:
+        return f"@protocols:({query}*)"
+    return f"@protocols:({query}* | %{query}%)"
+
 @app.get("/search/ft", summary="Search using RediSearch full-text capabilities")
 async def search_with_redisearch(
     query: str = Query(..., description="Search query (e.g., 'sip', 'ip', 'http')"),
@@ -624,7 +629,7 @@ async def search_with_redisearch(
 
         offset = (page - 1) * limit
 
-        q = RedisQuery(f"@protocols:({query}*) {exclude_clause}") \
+        q = RedisQuery(build_query(query) + " " + exclude_clause) \
             .paging(offset, limit)
 
         # Redis-side sorting (only if supported)
