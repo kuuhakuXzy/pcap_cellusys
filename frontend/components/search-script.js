@@ -3,6 +3,7 @@ import {
     API_PATH,
     CHECK_SCAN_FILES_STATUS_INTERVAL,
     MIN_QUERY_LENGTH,
+    SERVER,
     SERVER_HEALTH_CHECK_INTERVAL,
     SERVER_SCANNING_FILE_STATUS,
     TOAST_STATUS
@@ -15,8 +16,6 @@ let itemsPerPage = 5;
 let currentSortBy = "filename";
 let currentDescending = false;
 let useFuzzySearch = false; // Track which search mode to use
-
-const SERVER = new URL(`http://${window.APP_CONFIG.BASE_URL}:${window.APP_CONFIG.BASE_PORT}`).href;
 
 // --- UI HELPERS ---
 function displaySearchLoadingSpinner() {

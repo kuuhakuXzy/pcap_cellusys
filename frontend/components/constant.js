@@ -6,7 +6,8 @@ const API_PATH = Object.freeze({
     SERVER_HEALTH_CHECK_PATH: "health",
     SCAN_STATUS_PATH: "scan-status",
     SEARCH_SUGGESTION: "protocols/suggest",
-    CANCEL_SCAN_PATH: "cancel-scan"
+    CANCEL_SCAN_PATH: "cancel-scan",
+    EXCLUDED_PROTOCOLS_PATH: "excluded-protocols"
 });
 
 const TOAST_STATUS = Object.freeze({
@@ -28,10 +29,13 @@ const SERVER_HEALTH_CHECK_INTERVAL = 20000; // millisecond
 const CHECK_SCAN_FILES_STATUS_INTERVAL = 2000; // millisecond
 const MIN_QUERY_LENGTH = 1;
 
+const SERVER = new URL(`http://${window.APP_CONFIG.BASE_URL}:${window.APP_CONFIG.BASE_PORT}`).href;
+
 export {
     API_PATH,
     CHECK_SCAN_FILES_STATUS_INTERVAL,
     MIN_QUERY_LENGTH,
+    SERVER,
     SERVER_HEALTH_CHECK_INTERVAL,
     SERVER_SCANNING_FILE_STATUS,
     TOAST_STATUS

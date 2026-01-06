@@ -11,7 +11,7 @@
 import os
 import subprocess
 import redis
-from redis.commands.search.field import TextField, NumericField
+from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 import json
 import hashlib  
@@ -83,7 +83,8 @@ def initialize_search_index():
                 TextField("filename", sortable=True),
                 NumericField("size_bytes", sortable=True),
                 TextField("path", sortable=True),
-                TextField("protocols")
+                TextField("protocols"),
+                TagField("protocol_tags", separator=" "),
             )
             
             definition = IndexDefinition(
@@ -285,6 +286,7 @@ async def scan_and_index(exclude_files: List[str] = None, base_url: str = None, 
                             "path": file_path,
                             "size_bytes": file_size, 
                             "protocols": " ".join(protocols), # for RediSearch full-text search
+                            "protocol_tags": " ".join(protocols), # for RediSearch tag field include / exclude protocols
                             "protocol_counts": json.dumps(protocol_data), 
                             "protocol_percentages": json.dumps(protocol_percentages),
                             "download_url": download_url,
@@ -450,6 +452,40 @@ async def reindex_specific_folder(folder_name: str, request: Request, exclude: O
         raise HTTPException(status_code=500, detail=result["error"])
     return JSONResponse(content=result)
 
+async def get_excluded_protocols() -> set[str]:
+    """
+    Load excluded protocols from Redis config key.
+    Stored as: "arp icmp llc" (space or comma separated)
+    """
+    raw = await asyncio.to_thread(
+        redis_client.get,
+        "pcap:config:excluded_protocols"
+    )
+
+    if not raw:
+        return set()
+
+    return {
+        p.strip().lower()
+        for p in raw.replace(",", " ").split()
+        if p.strip()
+    }
+
+@app.get("/excluded-protocols", summary="Get list of excluded protocols")
+async def excluded_protocols():
+    excluded = await get_excluded_protocols()
+    return list(excluded)
+
+@app.post("/excluded-protocols", summary="Set excluded protocols")
+async def set_excluded_protocols(protocols: List[str]):
+    cleaned = " ".join(p.strip().lower() for p in protocols if p.strip())
+    await asyncio.to_thread(
+        redis_client.set,
+        "pcap:config:excluded_protocols",
+        cleaned
+    )
+    return {"status": "success", "excluded_protocols": protocols}
+
 class SortField(str, Enum):
     filename = "filename"
     size = "size_bytes"
@@ -502,6 +538,7 @@ async def search_pcaps(
             pipe.hgetall(f"pcap:file:{file_hash}")
         raw_results = await asyncio.to_thread(pipe.execute)
         
+        excluded = await get_excluded_protocols()
         results = []
         for pcap_data in raw_results:
             if pcap_data:
@@ -510,7 +547,19 @@ async def search_pcaps(
                 if counts_str:
                     try:
                         counts_dict = json.loads(counts_str)
-                        packet_count = counts_dict.get(protocol, 0)
+
+                        # Remove excluded protocols
+                        filtered_counts = {
+                            proto: count
+                            for proto, count in counts_dict.items()
+                            if proto.lower() not in excluded
+                        }
+
+                        # If searched protocol itself is excluded → skip result
+                        if protocol.lower() in excluded:
+                            continue
+
+                        packet_count = filtered_counts.get(protocol, 0)
                     except json.JSONDecodeError:
                         logger.warning(f"Could not parse protocol_counts")
                 
@@ -558,9 +607,18 @@ async def search_with_redisearch(
         raise HTTPException(status_code=503, detail="Service unavailable")
 
     try:
+        excluded = await get_excluded_protocols()
+
+        exclude_clause = ""
+        if excluded:
+            exclude_clause = " ".join(
+                f"-@protocol_tags:{{{p}}}"
+                for p in excluded
+            )
+
         offset = (page - 1) * limit
 
-        q = RedisQuery(f"@protocols:({query}*)") \
+        q = RedisQuery(f"@protocols:({query}*) {exclude_clause}") \
             .paging(offset, limit)
 
         # Redis-side sorting (only if supported)
@@ -584,7 +642,14 @@ async def search_with_redisearch(
             if counts_str:
                 try:
                     counts_dict = json.loads(counts_str)
-                    for proto, count in counts_dict.items():
+
+                    filtered_counts = {
+                        proto: count
+                        for proto, count in counts_dict.items()
+                        if proto.lower() not in excluded
+                    }
+
+                    for proto, count in filtered_counts.items():
                         if query.lower() in proto.lower():
                             packet_count += count
                 except json.JSONDecodeError:
@@ -619,13 +684,14 @@ async def suggest_protocols(
         raise HTTPException(status_code=503, detail="Service unavailable: Redis connection failed.")
 
     try:
+        excluded = await get_excluded_protocols()
         start_range = f"[{q}"
         end_range = f"[{q}\xff"
 
         suggestions = await asyncio.to_thread(
             redis_client.zrangebylex, AUTOCOMPLETE_KEY, start_range, end_range, start=0, num=10
         )
-        return suggestions
+        return [s for s in suggestions if s.lower() not in excluded]
     except Exception as e:
         logger.error(f"Error during protocol suggestion: {e}")
         raise HTTPException(status_code=500, detail="An error occurred while fetching suggestions.")
