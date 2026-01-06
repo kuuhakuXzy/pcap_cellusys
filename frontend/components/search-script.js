@@ -16,6 +16,7 @@ let itemsPerPage = 5;
 let currentSortBy = "filename";
 let currentDescending = false;
 let useFuzzySearch = false; // Track which search mode to use
+let currentFiles = []; // Store current page's files for copy functionality
 
 // --- UI HELPERS ---
 function displaySearchLoadingSpinner() {
@@ -338,6 +339,8 @@ async function fetchFiles() {
         const files = responseData.data; 
         const totalItems = responseData.total;
 
+        currentFiles = files; // Store current files for copy functionality
+
         renderTable(files);
         updatePaginationControls(totalItems);
 
@@ -469,6 +472,44 @@ function formatDate(timestamp) {
     return date.toLocaleString(); 
 }
 
+// --- NAMED EVENT HANDLERS ---
+function handleInfoButtonClick(e) {
+    e.stopPropagation();
+    const index = e.target.id.split('-')[1];
+    const file = currentFiles[index];
+    openInfoModal(file, e);
+}
+
+function handleCopyAllPaths() {
+    const paths = currentFiles.map(file => file.path).join('\n');
+    navigator.clipboard.writeText(paths).then(() => {
+        showToast(TOAST_STATUS.SUCCESS, "All paths copied to clipboard");
+    }).catch(err => {
+        showToast(TOAST_STATUS.ERROR, "Failed to copy paths");
+    });
+}
+
+function handleCopyPathClick(e) {
+    if (!e.target.classList.contains('copy-path-btn')) return;
+    e.stopPropagation();
+    const path = e.target.getAttribute('data-path');
+    navigator.clipboard.writeText(path).then(() => {
+        showToast(TOAST_STATUS.SUCCESS, "Path copied to clipboard");
+    }).catch(err => {
+        showToast(TOAST_STATUS.ERROR, "Failed to copy path");
+    });
+}
+
+
+// --- ATTACH STATIC LISTENERS ONCE ---
+document.addEventListener("DOMContentLoaded", () => {
+    const copyAllBtn = document.getElementById("copyAllPathsBtn");
+    if (copyAllBtn) {
+        copyAllBtn.addEventListener("click", handleCopyAllPaths);
+    }
+});
+
+
 function renderTable(files) {
     const tbody = document.getElementById('resultBody');
     tbody.innerHTML = '';
@@ -493,23 +534,25 @@ function renderTable(files) {
             <td data-label="Info"> 
                 <button id="${btnId}" class="info-btn" title="View Details">i</button>
             </td>
-            <td data-label="Path">${file.path}</td>
+            <td data-label="Path">
+                ${file.path} 
+                <i class="fa fa-copy copy-path-btn" data-path="${file.path}" title="Copy path"></i>
+            </td>
             <td data-label="Size">${formatFileSize(file.size_bytes)}</td>
             <td data-label="Packet">${file.protocol_packet_count}</td>
             
         `;
         tbody.appendChild(tr);
 
-        setTimeout(() => {
-            const btn = document.getElementById(btnId);
-            if(btn){
-                btn.addEventListener("click", (e) => {
-                    e.stopPropagation(); 
-                    openInfoModal(file, e);
-                });
-            }
-        }, 0);
+        // Attach listener to info button immediately (no setTimeout needed)
+        const btn = tr.querySelector(`#${btnId}`);
+        if (btn) {
+            btn.addEventListener("click", handleInfoButtonClick);
+        }
     });
+
+    // Use event delegation for dynamic copy buttons (attached once to tbody)
+    tbody.addEventListener('click', handleCopyPathClick);
 }
 
 

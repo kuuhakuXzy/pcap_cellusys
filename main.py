@@ -42,6 +42,8 @@ REDIS_PORT = int(os.getenv("REDIS_INTERNAL_PORT", 6379))
 BASE_URL = os.getenv("BE_BASE_URL")
 BASE_PORT = os.getenv("BE_BASE_PORT")
 
+PCAP_FILE_PREFIX = os.getenv("PCAP_FILE_PREFIX")
+
 FULL_BASE_URL = None
 if BASE_URL:
     if not BASE_URL.startswith("http://") and not BASE_URL.startswith("https://"):
@@ -565,6 +567,10 @@ async def search_pcaps(
                 
                 pcap_data["searched_protocol"] = protocol
                 pcap_data["protocol_packet_count"] = packet_count
+                if PCAP_FILE_PREFIX:
+                    # Adjust path for client consumption, PCAP_DIRECTORIES_STR is really a mounted folder not list of dirs
+                    pcap_data["path"] = pcap_data["path"].replace(PCAP_DIRECTORIES_STR, PCAP_FILE_PREFIX, 1)
+
                 results.append(pcap_data)
 
         # Sort results
@@ -657,6 +663,8 @@ async def search_with_redisearch(
 
             doc_dict["searched_protocol"] = query
             doc_dict["protocol_packet_count"] = packet_count
+            if PCAP_FILE_PREFIX:
+                doc_dict["path"] = doc_dict["path"].replace(PCAP_DIRECTORIES_STR, PCAP_FILE_PREFIX, 1)
             processed_data.append(doc_dict)
 
         # Python-side sort ONLY for derived field

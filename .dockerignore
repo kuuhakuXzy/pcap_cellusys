@@ -1,2 +1,6 @@
 pcaps/*
 pcaps
+
+# git
+.git
+.gitignore

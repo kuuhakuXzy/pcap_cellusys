@@ -764,3 +764,17 @@ a:visited {
         margin: 0; /* Reset centering on mobile */
     }
 }
+
+/* Copy button styles */
+#copyAllPathsBtn,
+.copy-path-btn {
+    cursor: pointer;
+    margin-left: 5px;
+    color: #666;
+    transition: color 0.3s ease;
+}
+
+#copyAllPathsBtn:hover,
+.copy-path-btn:hover {
+    color: #000;
+}
