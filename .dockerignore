@@ -1,0 +1,10 @@
+pcaps/*
+pcaps
+
+# git
+.git
+.gitignore
+
+venv/
+__pycache__/
+*.pyc
