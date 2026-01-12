@@ -23,6 +23,12 @@
             <button id="scanBtn">Scan</button>
             <div id="spinnerScanBtn" class="spinner-scan-hidden"></div>
             <button id="cancelScanBtn" class="danger-btn" disabled>Cancel</button>
+            <div class="scan-config-tooltip" id="scanConfigTooltip">
+                <i class="fa fa-info-circle" aria-hidden="true"></i>
+                <div class="scan-config-tooltip-content" id="scanConfigTooltipContent">
+                    Loading scan config...
+                </div>
+            </div>
 
         </div>
 
@@ -124,6 +130,18 @@
                     </div>
                     <div class="info-row">
                         <strong>Last Scanned:</strong> <span id="infoScanned"></span>
+                    </div>
+
+                    <hr class="info-divider">
+
+                    <div class="info-row">
+                        <strong>Scan Mode:</strong> <span id="infoScanMode"></span>
+                    </div>
+                    <div class="info-row">
+                        <strong>PEBC:</strong> <span id="infoScanPebc"></span>
+                    </div>
+                    <div class="info-row">
+                        <strong>Config Version:</strong> <span id="infoScanConfigVersion"></span>
                     </div>
 
                     <hr class="info-divider">

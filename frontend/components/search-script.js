@@ -19,6 +19,32 @@ let scanStatusTimer = null;
 const SERVER = new URL(`http://${window.APP_CONFIG.BASE_URL}:${window.APP_CONFIG.BASE_PORT}`).href;
 
 // --- UI HELPERS ---
+async function loadScanConfigTooltip() {
+    // Pull runtime scan configuration for the global tooltip.
+    const tooltipContent = document.getElementById("scanConfigTooltipContent");
+    if (!tooltipContent) {
+        return;
+    }
+    try {
+        const response = await axios.get(SERVER + API_PATH.SCAN_CONFIG_PATH);
+        const config = response.data || {};
+        const scanModeLabel = config.scan_mode === "quick" ? "Quick" : "Full";
+        const pebcLabel =
+            config.scan_mode === "quick" && config.pebc !== null && config.pebc !== undefined && config.pebc !== ""
+                ? config.pebc
+                : "N/A";
+        const minFileSize = config.min_file_size || "0";
+        const configVersion = config.config_version || "v1";
+        tooltipContent.textContent =
+            `Scan Mode: ${scanModeLabel}\n` +
+            `PEBC: ${pebcLabel}\n` +
+            `Min File Size: ${minFileSize}\n` +
+            `Config Version: ${configVersion}`;
+    } catch (err) {
+        tooltipContent.textContent = "Scan config unavailable";
+    }
+}
+
 function displaySearchLoadingSpinner() {
     const spinner = document.getElementById("spinnerSearchBtn");
     const searchBtn = document.getElementById("searchBtn");
@@ -92,6 +118,8 @@ const limitSelect = document.getElementById("limitSelect");
 if (limitSelect) limitSelect.value = "5"; 
 if (sortBySelect) sortBySelect.value = "filename";    
 if (sortOrderSelect) sortOrderSelect.value = "false";
+
+loadScanConfigTooltip();
 
 // Listen to user's items per page
 if (limitSelect) {
@@ -561,6 +589,14 @@ function openInfoModal(file, event) {
 
     document.getElementById("infoModified").innerText = formatDate(file.last_modified);
     document.getElementById("infoScanned").innerText = formatDate(file.last_scanned);
+    const scanModeValue = file.scan_mode === "quick" ? "Quick" : "Full";
+    const pebcValue =
+        file.scan_mode === "quick" && file.pebc !== undefined && file.pebc !== null && String(file.pebc).trim() !== ""
+            ? file.pebc
+            : "N/A";
+    document.getElementById("infoScanMode").innerText = scanModeValue;
+    document.getElementById("infoScanPebc").innerText = pebcValue;
+    document.getElementById("infoScanConfigVersion").innerText = file.config_version || "N/A";
 
     // Fill all protocols
     const protoContainer = document.getElementById("infoProtocols");
