@@ -529,12 +529,32 @@ function formatDate(timestamp) {
     return date.toLocaleString(); 
 }
 
+function getScanModeBadgeHtml(file) {
+    const scanModeRaw = (file.scan_mode || "").toLowerCase();
+    const isQuick = scanModeRaw === "quick";
+    const pebcValue =
+        isQuick && file.pebc !== undefined && file.pebc !== null && String(file.pebc).trim() !== ""
+            ? String(file.pebc).trim()
+            : "N/A";
+    const tooltipText = isQuick ? `Quick Scan (${pebcValue})` : "Full Scan";
+    const badgeClasses = isQuick ? "scan-mode-icon text-yellow-600" : "scan-mode-icon text-green-600";
+    const iconHtml = isQuick
+        ? `<span class="scan-mode-icon scan-mode-icon-quick" aria-hidden="true">⚡</span>`
+        : `<span class="scan-mode-icon scan-mode-icon-full" aria-hidden="true">✓</span>`;
+
+    return `
+        <span class="${badgeClasses}" title="${tooltipText}" aria-label="${tooltipText}">
+            ${iconHtml}
+        </span>
+    `;
+}
+
 function renderTable(files) {
     const tbody = document.getElementById('resultBody');
     tbody.innerHTML = '';
 
     if (!files || files.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No result found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No result found</td></tr>';
         return;
     }
 
@@ -552,6 +572,9 @@ function renderTable(files) {
             </td>
             <td data-label="Info"> 
                 <button id="${btnId}" class="info-btn" title="View Details">i</button>
+            </td>
+            <td data-label="Mode" class="mode-cell">
+                ${getScanModeBadgeHtml(file)}
             </td>
             <td data-label="Path">${file.path}</td>
             <td data-label="Size">${formatFileSize(file.size_bytes)}</td>
