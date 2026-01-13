@@ -214,7 +214,7 @@ def get_protocols_from_pcap_sync(
     pcap_file: str,
     scan_mode: str = "full",
     quick_threshold_bytes: Optional[int] = None
-) -> Optional[Dict[str, int]]:
+) -> Optional[tuple[Dict[str, int], int]]:
     """Extract protocol counts via tshark with optional quick-scan thresholding."""
     if scan_mode == "quick":
         command = [
@@ -258,7 +258,7 @@ def get_protocols_from_pcap_sync(
             if threshold <= 0:
                 logger.warning("Quick scan threshold is <= 0 for %s; skipping scan", pcap_file)
                 process.terminate()
-                return {}
+                return {}, 0
 
             while True:
                 if scan_cancel_event.is_set():
@@ -326,7 +326,7 @@ def get_protocols_from_pcap_sync(
                 bytes_scanned,
                 packets_scanned,
             )
-            return protocol_counts
+            return protocol_counts, packets_scanned
 
         stdout_lines: List[str] = []
         stderr_lines: List[str] = []
@@ -367,9 +367,10 @@ def get_protocols_from_pcap_sync(
         output = "".join(stdout_lines).strip()
 
         if not output:
-            return {}
+            return {}, 0
 
-        for line in output.splitlines():
+        lines = output.splitlines()
+        for line in lines:
             protocols = line.split(":")
 
             unique_protocols = set(protocols)
@@ -377,7 +378,7 @@ def get_protocols_from_pcap_sync(
             for proto in unique_protocols:
                 protocol_counts[proto] = protocol_counts.get(proto, 0) + 1
 
-        return protocol_counts
+        return protocol_counts, len(lines)
 
     except FileNotFoundError:
         logger.error("tshark not found — please install it.")
@@ -392,27 +393,25 @@ async def get_protocols_from_pcap(
     pcap_file: str,
     scan_mode: str = "full",
     quick_threshold_bytes: Optional[int] = None
-) -> Optional[Dict[str, int]]:
+) -> Optional[tuple[Dict[str, int], int]]:
     """Async wrapper around tshark protocol extraction."""
     return await asyncio.to_thread(get_protocols_from_pcap_sync, pcap_file, scan_mode, quick_threshold_bytes)
 
-def calculate_protocol_percentages(protocol_counts: Dict[str, int]) -> Dict[str, float]:
+def calculate_protocol_percentages(protocol_counts: Dict[str, int], packets_scanned: int) -> Dict[str, float]:
     """
-    Calculates the presence percentage of each protocol relative to the total file.
+    Calculates the presence percentage of each protocol relative to scanned packets.
     """
     if not protocol_counts:
         return {}
 
-    total_packets = max(protocol_counts.values())
-
-    if total_packets == 0:
+    if packets_scanned <= 0:
         return {k: 0.0 for k in protocol_counts}
 
     percentages = {
-        proto: round((count / total_packets) * 100, 2) 
+        proto: round((count / packets_scanned) * 100, 2)
         for proto, count in protocol_counts.items()
     }
-    
+
     return percentages
 
 # --- Indexing Functionality ---
@@ -508,18 +507,19 @@ async def scan_and_index(exclude_files: List[str] = None, base_url: str = None, 
                 if current_scan_mode == "quick":
                     quick_threshold_bytes = max(1, int(file_size * QUICK_SCAN_PEBC))
                 logger.info(f"Processing file: {file_path}")
-                protocol_data = await get_protocols_from_pcap(
+                protocol_result = await get_protocols_from_pcap(
                     file_path,
                     scan_mode=current_scan_mode,
                     quick_threshold_bytes=quick_threshold_bytes,
                 )
 
-                if protocol_data is not None:
+                if protocol_result is not None:
+                    protocol_data, packets_scanned = protocol_result
                     if not protocol_data:
                         logger.warning(f"No protocols found in {filename}. Skipping from index.")
                         continue
 
-                    protocol_percentages = calculate_protocol_percentages(protocol_data)
+                    protocol_percentages = calculate_protocol_percentages(protocol_data, packets_scanned)
 
                     file_hash = await calculate_sha256(file_path)
                     pcap_key = f"pcap:file:{file_hash}"
@@ -545,6 +545,7 @@ async def scan_and_index(exclude_files: List[str] = None, base_url: str = None, 
                         "protocols": ",".join(protocols), 
                         "protocol_counts": json.dumps(protocol_data), 
                         "protocol_percentages": json.dumps(protocol_percentages),
+                        "packets_scanned": packets_scanned,
                         "download_url": download_url,
                         "last_modified": await asyncio.to_thread(os.path.getmtime, file_path),
                         "last_scanned": current_time,
@@ -864,6 +865,11 @@ async def download_filtered_pcap(
     
     original_path = file_metadata.get("path")
     original_filename = file_metadata.get("filename")
+    packets_scanned_raw = file_metadata.get("packets_scanned")
+    try:
+        packets_scanned = int(packets_scanned_raw) if packets_scanned_raw else 0
+    except (TypeError, ValueError):
+        packets_scanned = 0
     
     if not re.match(r"^[a-zA-Z0-9_.-]+$", protocol):
         raise HTTPException(status_code=400, detail="Invalid protocol format")
@@ -874,9 +880,14 @@ async def download_filtered_pcap(
     cmd = [
         "tshark",
         "-r", original_path,
-        "-Y", protocol,       
-        "-w", temp_filepath   
     ]
+    # Limit filtering to the same packet window used during scanning.
+    if packets_scanned > 0:
+        cmd.extend(["-c", str(packets_scanned)])
+    cmd.extend([
+        "-Y", protocol,
+        "-w", temp_filepath
+    ])
 
     logger.info(f"Starting filtered export: {' '.join(cmd)}")
 
