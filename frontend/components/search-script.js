@@ -586,6 +586,7 @@ function openInfoModal(file, event) {
     document.getElementById("infoPath").innerText = file.path || "N/A";
     document.getElementById("infoSize").innerText = formatFileSize(file.size_bytes);
     document.getElementById("infoPackets").innerText = file.protocol_packet_count || 0;
+    document.getElementById("infoPacketsScanned").innerText = file.packets_scanned || "N/A";
 
     document.getElementById("infoModified").innerText = formatDate(file.last_modified);
     document.getElementById("infoScanned").innerText = formatDate(file.last_scanned);
